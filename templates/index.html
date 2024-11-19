@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groupie Tracker</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Groupie Tracker</h1>
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search for artists..." aria-label="Search for artists">
+            <div id="suggestions" role="listbox" aria-label="Search suggestions"></div>
+        </div>
+        <div id="filter-container">
+            <div class="filter-row">
+                <label for="creation-year"><i class="fas fa-calendar-alt"></i> Career Starting Year:</label>
+                <input type="range" id="creation-year" class="range-slider" min="1950" max="2023" value="1950">
+                <span id="creation-year-display" class="year-display">1950</span>
+            </div>
+            <div class="filter-row">
+                <label for="first-album-year"><i class="fas fa-compact-disc"></i> First Album Year:</label>
+                <input type="range" id="first-album-year" class="range-slider" min="1950" max="2023" value="1950">
+                <span id="first-album-year-display" class="year-display">1950</span>
+            </div>
+        </div>
+        <div id="results-container"></div>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+    </div>
+    <div id="error-message" class="error-message" role="alert" aria-live="assertive"></div>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+    <script src="/static/js/index.js"></script>
+</body>
+</html>
