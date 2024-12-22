@@ -94,7 +94,7 @@ function addRouteAnimation(map) {
     animateLine();
 }
 
-// Enhanced Map Display Function
+// Map Display Function
 function displayMap(locations) {
     if (map) {
         map.remove();
@@ -251,6 +251,21 @@ function displayMap(locations) {
     });
 }
 
+function showActionConfirmation(message, type = 'success') {
+    const confirmationEl = document.createElement('div');
+    confirmationEl.className = `feedback-message ${type}`;
+    confirmationEl.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(confirmationEl);
+    
+    setTimeout(() => {
+        confirmationEl.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => confirmationEl.remove(), 300);
+    }, 3000);
+}
 
 function toggleFavorite(artistId) {
     // Convert artistId to string for consistent comparison
@@ -260,27 +275,24 @@ function toggleFavorite(artistId) {
     const index = favorites.indexOf(artistId);
     
     if (index === -1) {
-        // Add to favorites
         favorites.push(artistId);
         button.classList.add('favorited');
         button.innerHTML = '<i class="fas fa-star"></i> Remove from Favorites';
-        showNotification('Added to favorites!');
+        showActionConfirmation('Added to favorites!');
     } else {
-        // Remove from favorites
         favorites.splice(index, 1);
         button.classList.remove('favorited');
         button.innerHTML = '<i class="far fa-star"></i> Add to Favorites';
-        showNotification('Removed from favorites!');
+        showActionConfirmation('Removed from favorites!');
     }
     
-    // Save to localStorage
     localStorage.setItem('favorites', JSON.stringify(favorites));
 }
 
-function shareArtist(artistId, artistName, creationDate, firstAlbum) {
+function shareArtist(artistId, artistName, creationDate = '', firstAlbum = '') {
     const shareData = {
         title: `${artistName} - Groupie Tracker`,
-        text: `Check out ${artistName} on Groupie Tracker!\nCreation Date: ${creationDate}\nFirst Album: ${firstAlbum}`,
+        text: `Check out ${artistName} on Groupie Tracker!${creationDate ? `\nCreation Date: ${creationDate}` : ''}${firstAlbum ? `\nFirst Album: ${firstAlbum}` : ''}`,
         url: window.location.href
     };
 
@@ -288,20 +300,20 @@ function shareArtist(artistId, artistName, creationDate, firstAlbum) {
         if (navigator.share) {
             // Use Web Share API if available (mobile devices)
             navigator.share(shareData)
-                .then(() => showNotification('Shared successfully!'))
+                .then(() => showActionConfirmation('Shared successfully!'))
                 .catch(error => {
                     if (error.name !== 'AbortError') {
-                        showNotification('Error sharing content', 'error');
+                        showActionConfirmation('Error sharing content', 'error');
                     }
                 });
         } else {
             // Fallback to clipboard copy (desktop)
             navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`)
-                .then(() => showNotification('Copied to clipboard!', 'clipboard'))
-                .catch(() => showNotification('Error copying to clipboard', 'error'));
+                .then(() => showActionConfirmation('Copied to clipboard!', 'clipboard'))
+                .catch(() => showActionConfirmation('Error copying to clipboard', 'error'));
         }
     } catch (error) {
-        showNotification('Error sharing content', 'error');
+        showActionConfirmation('Error sharing content', 'error');
     }
 }
 
@@ -381,15 +393,46 @@ function displayArtistDetails(details) {
     displayMap(details.locations);
 }
 
+function initializeKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Alt + Left Arrow for back navigation
+        if (e.altKey && e.key === 'ArrowLeft') {
+            window.location.href = '/';
+        }
+        
+        // Alt + F to toggle favorite
+        if (e.altKey && e.key === 'f') {
+            const artistId = getArtistId();
+            toggleFavorite(artistId);
+        }
+
+        // Alt + S to share
+        if (e.altKey && e.key === 's') {
+            const artistDetails = document.getElementById('artist-details');
+            if (artistDetails) {
+                // Extract information from the artist details container
+                const name = artistDetails.querySelector('h2')?.textContent || '';
+                const creationDate = artistDetails.querySelector('p:nth-child(3)')?.textContent.split(': ')[1] || '';
+                const firstAlbum = artistDetails.querySelector('p:nth-child(4)')?.textContent.split(': ')[1] || '';
+                
+                if (name) {
+                    shareArtist(getArtistId(), name, creationDate, firstAlbum);
+                }
+            }
+        }
+    });
+}
 // Event Listeners
 window.addEventListener('load', () => {
     const artistId = getArtistId();
     if (artistId) {
+        const container = document.getElementById('artist-details');
         showLoading();
+        
         fetch(`/api/artist/${artistId}`)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw { response };
                 }
                 return response.json();
             })
@@ -397,10 +440,45 @@ window.addEventListener('load', () => {
                 displayArtistDetails(data);
                 hideLoading();
             })
-            .catch(error => {
-                console.error('Error:', error);
-                showError('An error occurred while fetching artist details. Please try again later.');
-                hideLoading();
-            });
+            .catch(error => handleError(error, container));
     }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize keyboard shortcuts
+    initializeKeyboardShortcuts();
+
+    // Initialize shortcuts guide
+    const shortcutsGuide = document.querySelector('.shortcuts-guide');
+    const shortcutsToggle = document.querySelector('.shortcuts-toggle');
+
+    if (shortcutsGuide && shortcutsToggle) {
+        shortcutsToggle.addEventListener('click', () => {
+            shortcutsGuide.classList.toggle('active');
+        });
+
+        // Close shortcuts guide when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!shortcutsGuide.contains(e.target)) {
+                shortcutsGuide.classList.remove('active');
+            }
+        });
+
+        // Close shortcuts guide when pressing Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                shortcutsGuide.classList.remove('active');
+            }
+        });
+    }
+});
+
+window.addEventListener('online', () => {
+    // Refresh the page when connection is restored
+    window.location.reload();
+});
+
+window.addEventListener('offline', () => {
+    const container = document.getElementById('results-container'); // or 'artist-details'
+    createOfflineUI(container);
 });

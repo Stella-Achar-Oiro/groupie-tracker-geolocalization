@@ -30,6 +30,20 @@
     <div class="container">
         <nav class="breadcrumb">
             <a href="/" class="back-button"><i class="fas fa-arrow-left"></i> Back to Artists</a>
+            <div class="shortcuts-guide">
+                <button class="shortcuts-toggle" aria-expanded="false" aria-controls="shortcuts-content">
+                    <i class="fas fa-keyboard"></i>
+                    Keyboard Shortcuts
+                </button>
+                <div id="shortcuts-content" class="shortcuts-content" role="dialog" aria-label="Keyboard shortcuts">
+                    <h3>Keyboard Shortcuts</h3>
+                    <ul role="list">
+                        <li><kbd>Alt</kbd> + <kbd>←</kbd> Back to main page</li>
+                        <li><kbd>Alt</kbd> + <kbd>F</kbd> Toggle favorite</li>
+                        <li><kbd>Alt</kbd> + <kbd>S</kbd> Share artist</li>
+                    </ul>
+                </div>
+            </div>
         </nav>
         
         <div id="artist-details" class="artist-details-page">
@@ -46,6 +60,7 @@
     <div id="error-message" class="error-message" role="alert" aria-live="assertive"></div>
 
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+    <script src="/static/js/error-handler.js"></script>
     <script src="/static/js/artist-details.js"></script>
 </body>
 </html>

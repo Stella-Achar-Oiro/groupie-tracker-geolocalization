@@ -239,8 +239,10 @@ document.getElementById('clear-filters').addEventListener('click', clearFilters)
 
 // Search and Display Functions
 function searchArtists(query = '') {
+    const container = document.getElementById('results-container');
     showLoading();
     const filters = getFilterValues();
+    
     fetch(`/api/search?q=${encodeURIComponent(query)}`, {
         method: 'POST',
         headers: {
@@ -250,7 +252,7 @@ function searchArtists(query = '') {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw { response };
         }
         return response.json();
     })
@@ -262,11 +264,7 @@ function searchArtists(query = '') {
         }
         hideLoading();
     })
-    .catch(error => {
-        console.error('Error:', error);
-        showError('An error occurred while searching for artists. Please try again later.');
-        hideLoading();
-    });
+    .catch(error => handleError(error, container));
 }
 
 function displayResults(artists) {
@@ -317,6 +315,16 @@ function lazyLoadImages() {
 
     images.forEach(img => observer.observe(img));
 }
+
+window.addEventListener('online', () => {
+    // Refresh the page when connection is restored
+    window.location.reload();
+});
+
+window.addEventListener('offline', () => {
+    const container = document.getElementById('results-container'); // or 'artist-details'
+    createOfflineUI(container);
+});
 
 // Initialize the page
 window.addEventListener('load', () => {
