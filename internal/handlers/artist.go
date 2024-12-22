@@ -21,6 +21,13 @@ func HandleArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Use the constants from models package
+    if id < models.MinArtistID || id > models.MaxArtistID {
+        ErrorHandler(w, r, http.StatusBadRequest, 
+            fmt.Sprintf("Artist ID must be between %d and %d", models.MinArtistID, models.MaxArtistID))
+        return
+    }
+
 	cachedData, err := cache.GetCachedData()
 	if err != nil {
 		ErrorHandler(w, r, http.StatusInternalServerError, "Failed to fetch data")
