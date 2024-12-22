@@ -1,3 +1,16 @@
+// Global variables
+let allArtists = [];
+let allLocations = new Set();
+let memberCounts = new Set();
+let showingFavorites = false;
+
+// DOM Elements
+const searchInput = document.getElementById('search-input');
+const suggestionsContainer = document.getElementById('suggestions');
+const favoritesBtn = document.getElementById('show-favorites');
+const locationSearch = document.getElementById('location-search');
+
+// Loading functions
 function showLoading() {
     document.getElementById('loading').style.display = 'block';
 }
@@ -6,20 +19,16 @@ function hideLoading() {
     document.getElementById('loading').style.display = 'none';
 }
 
-mapboxgl.accessToken = 'pk.eyJ1Ijoic3RlbGxhYWNoYXJvaXJvIiwiYSI6ImNtMWhmZHNlODBlc3cybHF5OWh1MDI2dzMifQ.wk3v-v7IuiSiPwyq13qdHw';
+function showError(message) {
+    const errorElement = document.getElementById('error-message');
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+    setTimeout(() => {
+        errorElement.style.display = 'none';
+    }, 5000);
+}
 
-const searchInput = document.getElementById('search-input');
-const suggestionsContainer = document.getElementById('suggestions');
-const creationYearSlider = document.getElementById('creation-year');
-const creationYearDisplay = document.getElementById('creation-year-display');
-const firstAlbumYearSlider = document.getElementById('first-album-year');
-const firstAlbumYearDisplay = document.getElementById('first-album-year-display');
-const memberCheckboxes = document.getElementById('member-checkboxes');
-const locationCheckboxes = document.getElementById('location-checkboxes');
-let allArtists = [];
-let allLocations = new Set();
-
-// Event Listeners
+// Search and Suggestions
 searchInput.addEventListener('input', () => {
     const query = searchInput.value;
     if (query.length >= 1) {
@@ -32,19 +41,13 @@ searchInput.addEventListener('input', () => {
     }
 });
 
-// Add event listeners for filters
-creationYearSlider.addEventListener('input', updateCreationYearDisplay);
-firstAlbumYearSlider.addEventListener('input', updateFirstAlbumYearDisplay);
-
-function updateCreationYearDisplay() {
-    creationYearDisplay.textContent = creationYearSlider.value;
-    applyFilters();
-}
-
-function updateFirstAlbumYearDisplay() {
-    firstAlbumYearDisplay.textContent = firstAlbumYearSlider.value;
-    applyFilters();
-}
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const query = searchInput.value;
+        suggestionsContainer.innerHTML = '';
+        searchArtists(query);
+    }
+});
 
 function displaySuggestions(suggestions) {
     suggestionsContainer.innerHTML = '';
@@ -61,6 +64,171 @@ function displaySuggestions(suggestions) {
     });
 }
 
+// Filter Initialization and Updates
+function initializeFilters(artists) {
+    // Initialize member counts
+    artists.forEach(artist => {
+        memberCounts.add(artist.members.length);
+    });
+
+    // Populate member checkboxes
+    const memberCheckboxes = document.getElementById('member-checkboxes');
+    const sortedCounts = Array.from(memberCounts).sort((a, b) => a - b);
+    
+    memberCheckboxes.innerHTML = sortedCounts.map(count => `
+        <label class="checkbox-label">
+            <input type="checkbox" name="members" value="${count}">
+            ${count} ${count === 1 ? 'member' : 'members'}
+        </label>
+    `).join('');
+
+    // Add 10+ option if needed
+    if (sortedCounts[sortedCounts.length - 1] < 10) {
+        memberCheckboxes.innerHTML += `
+            <label class="checkbox-label">
+                <input type="checkbox" name="members" value="10+">
+                10+ members
+            </label>
+        `;
+    }
+
+    // Initialize locations
+    Promise.all(artists.map(artist => 
+        fetch(artist.locations)
+            .then(response => response.json())
+            .then(data => data.locations)
+    ))
+    .then(locationArrays => {
+        // Flatten all location arrays and add to Set
+        locationArrays.forEach(locations => {
+            locations.forEach(location => {
+                allLocations.add(location);
+            });
+        });
+        
+        updateLocationCheckboxes(Array.from(allLocations));
+    })
+    .catch(error => {
+        console.error('Error fetching locations:', error);
+        showError('Error loading location filters');
+    });
+
+    // Set year ranges
+    initializeYearRanges(artists);
+}
+
+function initializeYearRanges(artists) {
+    const creationYearMin = Math.min(...artists.map(a => a.creationDate));
+    const creationYearMax = Math.max(...artists.map(a => a.creationDate));
+    const albumYearMin = Math.min(...artists.map(a => parseInt(a.firstAlbum.split('-')[2])));
+    const albumYearMax = Math.max(...artists.map(a => parseInt(a.firstAlbum.split('-')[2])));
+
+    document.getElementById('creation-year-min').value = creationYearMin;
+    document.getElementById('creation-year-max').value = creationYearMax;
+    document.getElementById('album-year-min').value = albumYearMin;
+    document.getElementById('album-year-max').value = albumYearMax;
+}
+
+function updateLocationCheckboxes(locations) {
+    const locationCheckboxes = document.getElementById('location-checkboxes');
+    locationCheckboxes.innerHTML = locations.sort().map(location => `
+        <label class="checkbox-label">
+            <input type="checkbox" name="locations" value="${location}">
+            ${location}
+        </label>
+    `).join('');
+}
+
+// Filter Event Listeners
+document.querySelectorAll('.year-input').forEach(input => {
+    input.addEventListener('change', applyFilters);
+});
+
+locationSearch.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const filteredLocations = Array.from(allLocations).filter(location =>
+        location.toLowerCase().includes(searchTerm)
+    );
+    updateLocationCheckboxes(filteredLocations);
+});
+
+// Favorites Handling
+favoritesBtn.addEventListener('click', () => {
+    showingFavorites = !showingFavorites;
+    favoritesBtn.classList.toggle('active');
+    favoritesBtn.innerHTML = showingFavorites ? 
+        '<i class="fas fa-star"></i> Show All' : 
+        '<i class="fas fa-star"></i> Show Favorites';
+    
+    if (showingFavorites) {
+        const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        const favoriteArtists = allArtists.filter(artist => 
+            favorites.includes(artist.id.toString())
+        );
+        displayResults(favoriteArtists);
+    } else {
+        searchArtists(searchInput.value);
+    }
+});
+
+// Filter Functions
+function getFilterValues() {
+    return {
+        creationYearMin: parseInt(document.getElementById('creation-year-min').value),
+        creationYearMax: parseInt(document.getElementById('creation-year-max').value),
+        firstAlbumYearMin: parseInt(document.getElementById('album-year-min').value),
+        firstAlbumYearMax: parseInt(document.getElementById('album-year-max').value),
+        members: Array.from(document.querySelectorAll('input[name="members"]:checked')).map(cb => parseInt(cb.value)),
+        locations: Array.from(document.querySelectorAll('input[name="locations"]:checked')).map(cb => cb.value)
+    };
+}
+
+function applyFilters() {
+    searchArtists(searchInput.value);
+}
+
+// Clear Filters
+function clearFilters() {
+    // Reset year inputs
+    const defaultYears = {
+        'creation-year-min': 1950,
+        'creation-year-max': 2023,
+        'album-year-min': 1950,
+        'album-year-max': 2023
+    };
+
+    Object.entries(defaultYears).forEach(([id, value]) => {
+        document.getElementById(id).value = value;
+    });
+
+    // Clear member checkboxes
+    document.querySelectorAll('#member-checkboxes input[type="checkbox"]')
+        .forEach(checkbox => checkbox.checked = false);
+
+    // Clear location search and checkboxes
+    document.getElementById('location-search').value = '';
+    document.querySelectorAll('#location-checkboxes input[type="checkbox"]')
+        .forEach(checkbox => checkbox.checked = false);
+
+    // Clear search input and suggestions
+    searchInput.value = '';
+    suggestionsContainer.innerHTML = '';
+
+    // Reset favorites if showing
+    if (showingFavorites) {
+        showingFavorites = false;
+        favoritesBtn.classList.remove('active');
+        favoritesBtn.innerHTML = '<i class="fas fa-star"></i> Show Favorites';
+    }
+
+    // Refresh results
+    searchArtists('');
+}
+
+// Add clear filters event listener
+document.getElementById('clear-filters').addEventListener('click', clearFilters);
+
+// Search and Display Functions
 function searchArtists(query = '') {
     showLoading();
     const filters = getFilterValues();
@@ -81,6 +249,7 @@ function searchArtists(query = '') {
         displayResults(data.artists);
         if (!allArtists.length) {
             allArtists = data.artists;
+            initializeFilters(data.artists);
         }
         hideLoading();
     })
@@ -91,20 +260,15 @@ function searchArtists(query = '') {
     });
 }
 
-function getFilterValues() {
-    return {
-        creationYearMin: parseInt(document.getElementById('creation-year').value),
-        creationYearMax: 2023,
-        firstAlbumYearMin: parseInt(document.getElementById('first-album-year').value),
-        firstAlbumYearMax: 2023,
-        members: Array.from(document.querySelectorAll('#member-checkboxes input:checked')).map(cb => parseInt(cb.value)),
-        locations: Array.from(document.querySelectorAll('#location-checkboxes input:checked')).map(cb => cb.value)
-    };
-}
-
 function displayResults(artists) {
     const container = document.getElementById('results-container');
     container.innerHTML = '';
+    
+    if (artists.length === 0) {
+        container.innerHTML = '<div class="no-results">No artists found matching your criteria</div>';
+        return;
+    }
+
     artists.forEach(artist => {
         const card = document.createElement('div');
         card.className = 'artist-card';
@@ -122,6 +286,7 @@ function displayResults(artists) {
     lazyLoadImages();
 }
 
+// Image Lazy Loading
 function lazyLoadImages() {
     const images = document.querySelectorAll('.lazy-image');
     const options = {
@@ -142,15 +307,6 @@ function lazyLoadImages() {
     }, options);
 
     images.forEach(img => observer.observe(img));
-}
-
-function showError(message) {
-    const errorElement = document.getElementById('error-message');
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
-    setTimeout(() => {
-        errorElement.style.display = 'none';
-    }, 5000);
 }
 
 // Initialize the page
