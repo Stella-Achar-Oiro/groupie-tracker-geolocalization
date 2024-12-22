@@ -1095,3 +1095,124 @@ kbd {
         opacity: 1;
     }
 }
+
+.about-section {
+    padding: 40px;
+    background: var(--card-color);
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.about-description {
+    font-size: 1.2em;
+    line-height: 1.6;
+    margin: 40px 0;
+    color: var(--text-color);
+    opacity: 0.9;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin: 40px 0;
+}
+
+.feature-card {
+    padding: 30px;
+    background: var(--background-color);
+    border-radius: 10px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(29, 185, 84, 0.2);
+}
+
+.feature-card i {
+    font-size: 2.5em;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.feature-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.feature-card p {
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.tech-stack {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 2px solid var(--background-color);
+}
+
+.tech-stack h2 {
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.tech-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 30px;
+}
+
+.tech-item {
+    text-align: center;
+    padding: 20px;
+    background: var(--background-color);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.tech-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(29, 185, 84, 0.2);
+}
+
+.tech-item i {
+    font-size: 2em;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.tech-item h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.tech-item p {
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-link {
+    color: var(--text-color);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    border-radius: 20px;
+    border: 2px solid var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    background: var(--primary-color);
+    transform: translateY(-2px);
+}
