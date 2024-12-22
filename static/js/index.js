@@ -92,9 +92,9 @@ function initializeFilters(artists) {
         `;
     }
 
-    // Initialize locations
+    // Initialize locations using cached data from the search response
     Promise.all(artists.map(artist => 
-        fetch(artist.locations)
+        fetch(`/api/artist/${artist.id}`)
             .then(response => response.json())
             .then(data => data.locations)
     ))
@@ -102,7 +102,7 @@ function initializeFilters(artists) {
         // Flatten all location arrays and add to Set
         locationArrays.forEach(locations => {
             locations.forEach(location => {
-                allLocations.add(location);
+                allLocations.add(location.address);
             });
         });
         
@@ -152,6 +152,10 @@ locationSearch.addEventListener('input', (e) => {
     updateLocationCheckboxes(filteredLocations);
 });
 
+document.querySelectorAll('input[name="members"], input[name="locations"]').forEach(checkbox => {
+    checkbox.addEventListener('change', applyFilters);
+});
+
 // Favorites Handling
 favoritesBtn.addEventListener('click', () => {
     showingFavorites = !showingFavorites;
@@ -173,12 +177,17 @@ favoritesBtn.addEventListener('click', () => {
 
 // Filter Functions
 function getFilterValues() {
+    const memberCheckboxes = Array.from(document.querySelectorAll('input[name="members"]:checked'));
+    const memberValues = memberCheckboxes.map(cb => {
+        return cb.value === '10+' ? 10 : parseInt(cb.value);
+    });
+
     return {
         creationYearMin: parseInt(document.getElementById('creation-year-min').value),
         creationYearMax: parseInt(document.getElementById('creation-year-max').value),
         firstAlbumYearMin: parseInt(document.getElementById('album-year-min').value),
         firstAlbumYearMax: parseInt(document.getElementById('album-year-max').value),
-        members: Array.from(document.querySelectorAll('input[name="members"]:checked')).map(cb => parseInt(cb.value)),
+        members: memberValues,
         locations: Array.from(document.querySelectorAll('input[name="locations"]:checked')).map(cb => cb.value)
     };
 }
@@ -273,7 +282,7 @@ function displayResults(artists) {
         const card = document.createElement('div');
         card.className = 'artist-card';
         card.innerHTML = `
-            <img src="placeholder.jpg" data-src="${artist.image}" alt="${artist.name}" class="lazy-image">
+            <img src="/static/images/placeholder.jpg" data-src="${artist.image}" alt="${artist.name}" class="lazy-image">
             <h3>${artist.name}</h3>
             <p><i class="fas fa-calendar-alt"></i> Created: ${artist.creationDate}</p>
             <p><i class="fas fa-compact-disc"></i> First Album: ${artist.firstAlbum}</p>

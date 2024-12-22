@@ -51,29 +51,31 @@ function toggleFavorite(artistId) {
     localStorage.setItem('favorites', JSON.stringify(favorites));
 }
 
-async function shareArtist(artist) {
+function shareArtist(artistId, artistName, creationDate, firstAlbum) {
     const shareData = {
-        title: `${artist.name} - Groupie Tracker`,
-        text: `Check out ${artist.name} on Groupie Tracker!\nCreation Date: ${artist.creationDate}\nFirst Album: ${artist.firstAlbum}`,
+        title: `${artistName} - Groupie Tracker`,
+        text: `Check out ${artistName} on Groupie Tracker!\nCreation Date: ${creationDate}\nFirst Album: ${firstAlbum}`,
         url: window.location.href
     };
 
     try {
         if (navigator.share) {
             // Use Web Share API if available (mobile devices)
-            await navigator.share(shareData);
-            showNotification('Shared successfully!');
+            navigator.share(shareData)
+                .then(() => showNotification('Shared successfully!'))
+                .catch(error => {
+                    if (error.name !== 'AbortError') {
+                        showNotification('Error sharing content', 'error');
+                    }
+                });
         } else {
             // Fallback to clipboard copy (desktop)
-            await navigator.clipboard.writeText(
-                `${shareData.text}\n${shareData.url}`
-            );
-            showNotification('Copied to clipboard!', 'clipboard');
+            navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`)
+                .then(() => showNotification('Copied to clipboard!', 'clipboard'))
+                .catch(() => showNotification('Error copying to clipboard', 'error'));
         }
     } catch (error) {
-        if (error.name !== 'AbortError') {
-            showNotification('Error sharing content', 'error');
-        }
+        showNotification('Error sharing content', 'error');
     }
 }
 
@@ -214,8 +216,8 @@ function displayArtistDetails(details) {
                         onclick="toggleFavorite('${details.artist.id}')">
                     <i class="fas ${favorites.includes(details.artist.id.toString()) ? 'fa-star' : 'fa-star-o'}"></i>
                     ${favorites.includes(details.artist.id.toString()) ? 'Remove from Favorites' : 'Add to Favorites'}
-                </button>
-                <button class="action-btn share-btn" onclick="shareArtist(${JSON.stringify(details.artist)})">
+                <button class="action-btn share-btn" 
+                        onclick="shareArtist('${details.artist.id}', '${details.artist.name}', '${details.artist.creationDate}', '${details.artist.firstAlbum}')">
                     <i class="fas fa-share-alt"></i> Share
                 </button>
             </div>
