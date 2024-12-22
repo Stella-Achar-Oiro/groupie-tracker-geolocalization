@@ -9,9 +9,11 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header-section">
-            <h1>Groupie Tracker</h1>
+    <div class="header-section">
+        <h1>Groupie Tracker</h1>
+            <a href="/about" class="nav-link">
+                <i class="fas fa-info-circle"></i> About
+            </a>
             <button id="show-favorites" class="favorites-toggle-btn">
                 <i class="fas fa-star"></i> Show Favorites
             </button>
@@ -83,6 +85,7 @@
     <div id="error-message" class="error-message" role="alert" aria-live="assertive"></div>
 
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
+    <script src="/static/js/error-handler.js"></script>
     <script src="/static/js/index.js"></script>
 </body>
 </html>
