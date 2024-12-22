@@ -67,6 +67,15 @@ func main() {
     http.HandleFunc("/api/artist/", enableCORS(handlers.HandleArtist))
     http.HandleFunc("/api/suggestions", enableCORS(handlers.HandleSuggestions))
 
+    http.HandleFunc("/about", func(w http.ResponseWriter, r *http.Request) {
+        tmpl, err := template.ParseFiles("templates/about.html")
+        if err != nil {
+            handlers.ErrorHandler(w, r, http.StatusInternalServerError, "Failed to load about page")
+            return
+        }
+        tmpl.Execute(w, nil)
+    })
+
     // Serve static files
     fs := http.FileServer(http.Dir("static"))
     http.Handle("/static/", http.StripPrefix("/static/", fs))
