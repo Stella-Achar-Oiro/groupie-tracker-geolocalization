@@ -27,36 +27,87 @@ function getArtistId() {
 }
 
 function toggleFavorite(artistId) {
-    const index = favorites.indexOf(artistId);
-    if (index === -1) {
-        favorites.push(artistId);
-    } else {
-        favorites.splice(index, 1);
-    }
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-    updateFavoriteButton(artistId);
-}
-
-function updateFavoriteButton(artistId) {
+    // Convert artistId to string for consistent comparison
+    artistId = artistId.toString();
+    
     const button = document.getElementById(`favorite-${artistId}`);
-    if (button) {
-        button.innerHTML = favorites.includes(artistId) 
-            ? '<i class="fas fa-star"></i> Remove from Favorites' 
-            : '<i class="far fa-star"></i> Add to Favorites';
+    const index = favorites.indexOf(artistId);
+    
+    if (index === -1) {
+        // Add to favorites
+        favorites.push(artistId);
+        button.classList.add('favorited');
+        button.innerHTML = '<i class="fas fa-star"></i> Remove from Favorites';
+        showNotification('Added to favorites!');
+    } else {
+        // Remove from favorites
+        favorites.splice(index, 1);
+        button.classList.remove('favorited');
+        button.innerHTML = '<i class="far fa-star"></i> Add to Favorites';
+        showNotification('Removed from favorites!');
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+}
+
+function shareArtist(artistId, artistName, creationDate, firstAlbum) {
+    const shareData = {
+        title: `${artistName} - Groupie Tracker`,
+        text: `Check out ${artistName} on Groupie Tracker!\nCreation Date: ${creationDate}\nFirst Album: ${firstAlbum}`,
+        url: window.location.href
+    };
+
+    try {
+        if (navigator.share) {
+            // Use Web Share API if available (mobile devices)
+            navigator.share(shareData)
+                .then(() => showNotification('Shared successfully!'))
+                .catch(error => {
+                    if (error.name !== 'AbortError') {
+                        showNotification('Error sharing content', 'error');
+                    }
+                });
+        } else {
+            // Fallback to clipboard copy (desktop)
+            navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`)
+                .then(() => showNotification('Copied to clipboard!', 'clipboard'))
+                .catch(() => showNotification('Error copying to clipboard', 'error'));
+        }
+    } catch (error) {
+        showNotification('Error sharing content', 'error');
     }
 }
 
-function shareArtist(artist) {
-    if (navigator.share) {
-        navigator.share({
-            title: artist.name,
-            text: `Check out ${artist.name} on Groupie Tracker!`,
-            url: window.location.href
-        }).then(() => console.log('Successful share'))
-        .catch((error) => console.log('Error sharing:', error));
-    } else {
-        alert('Web Share API is not supported in your browser. You can copy the URL to share.');
+function showNotification(message, type = 'success') {
+    // Remove existing notification if any
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
     }
+
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    
+    // Add icon based on type
+    let icon = 'check';
+    if (type === 'clipboard') icon = 'clipboard';
+    if (type === 'error') icon = 'exclamation-circle';
+    
+    notification.innerHTML = `
+        <i class="fas fa-${icon}"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remove notification after 2 seconds
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 2000);
 }
 
 function displayMap(locations) {
@@ -160,10 +211,13 @@ function displayArtistDetails(details) {
             </ul>
             
             <div class="action-buttons">
-                <button id="favorite-${details.artist.id}" onclick="toggleFavorite(${details.artist.id})">
-                    ${favorites.includes(details.artist.id) ? '<i class="fas fa-star"></i> Remove from Favorites' : '<i class="far fa-star"></i> Add to Favorites'}
-                </button>
-                <button onclick="shareArtist(${JSON.stringify(details.artist)})">
+                <button id="favorite-${details.artist.id}" 
+                        class="action-btn favorite-btn ${favorites.includes(details.artist.id.toString()) ? 'favorited' : ''}"
+                        onclick="toggleFavorite('${details.artist.id}')">
+                    <i class="fas ${favorites.includes(details.artist.id.toString()) ? 'fa-star' : 'fa-star-o'}"></i>
+                    ${favorites.includes(details.artist.id.toString()) ? 'Remove from Favorites' : 'Add to Favorites'}
+                <button class="action-btn share-btn" 
+                        onclick="shareArtist('${details.artist.id}', '${details.artist.name}', '${details.artist.creationDate}', '${details.artist.firstAlbum}')">
                     <i class="fas fa-share-alt"></i> Share
                 </button>
             </div>
