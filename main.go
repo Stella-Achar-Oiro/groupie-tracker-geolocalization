@@ -62,10 +62,10 @@ func main() {
     }
 
     // Set up routes
-    http.HandleFunc("/artist/", handlers.HandleArtistDetails(artistDetailsTpl))
-    http.HandleFunc("/api/search", handlers.HandleSearch)
-    http.HandleFunc("/api/artist/", handlers.HandleArtist)
-    http.HandleFunc("/api/suggestions", handlers.HandleSuggestions)
+    http.HandleFunc("/artist/", enableCORS(handlers.HandleArtistDetails(artistDetailsTpl)))
+    http.HandleFunc("/api/search", enableCORS(handlers.HandleSearch))
+    http.HandleFunc("/api/artist/", enableCORS(handlers.HandleArtist))
+    http.HandleFunc("/api/suggestions", enableCORS(handlers.HandleSuggestions))
 
     // Serve static files
     fs := http.FileServer(http.Dir("static"))
@@ -78,5 +78,27 @@ func main() {
     logger.Printf("Server starting on %s", port)
     if err := http.ListenAndServe(port, nil); err != nil {
         logger.Fatalf("Server failed to start: %v", err)
+    }
+}
+
+func enableCORS(handler interface{}) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        // Set CORS headers
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+        
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+        
+        // Handle different types of handlers
+        switch h := handler.(type) {
+        case http.HandlerFunc:
+            h(w, r)
+        case func(http.ResponseWriter, *http.Request):
+            h(w, r)
+        }
     }
 }
