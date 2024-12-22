@@ -4,6 +4,7 @@ let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoic3RlbGxhYWNoYXJvaXJvIiwiYSI6ImNtMWhmZHNlODBlc3cybHF5OWh1MDI2dzMifQ.wk3v-v7IuiSiPwyq13qdHw';
 
+// Utility Functions
 function showLoading() {
     document.getElementById('loading').style.display = 'block';
 }
@@ -25,6 +26,231 @@ function getArtistId() {
     const pathParts = window.location.pathname.split('/');
     return pathParts[pathParts.length - 1];
 }
+
+// Map Utility Functions
+function calculateDistance(coords) {
+    let totalDistance = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+        const [lon1, lat1] = coords[i];
+        const [lon2, lat2] = coords[i + 1];
+        
+        // Haversine formula
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        totalDistance += R * c;
+    }
+    return Math.round(totalDistance);
+}
+
+function addDistanceControl(map, distance) {
+    const distanceControl = document.createElement('div');
+    distanceControl.className = 'mapboxgl-ctrl mapboxgl-ctrl-group distance-control';
+    distanceControl.innerHTML = `
+        <div class="distance-info">
+            <i class="fas fa-route"></i>
+            <span>Tour Distance: ${distance} km</span>
+        </div>
+    `;
+    map.getContainer().appendChild(distanceControl);
+}
+
+function addRouteAnimation(map) {
+    map.addLayer({
+        'id': 'route-animation',
+        'type': 'line',
+        'source': 'route',
+        'layout': {
+            'line-cap': 'round',
+            'line-join': 'round'
+        },
+        'paint': {
+            'line-color': '#1DB954',
+            'line-width': 3,
+            'line-opacity': 0.8,
+            'line-gradient': [
+                'interpolate',
+                ['linear'],
+                ['line-progress'],
+                0, '#1DB954',
+                0.5, '#ffffff',
+                1, '#1DB954'
+            ]
+        }
+    });
+
+    // Animate the line-gradient
+    let progress = 0;
+    function animateLine() {
+        progress = (progress + 0.005) % 1;
+        map.setPaintProperty('route-animation', 'line-progress', progress);
+        requestAnimationFrame(animateLine);
+    }
+    animateLine();
+}
+
+// Enhanced Map Display Function
+function displayMap(locations) {
+    if (map) {
+        map.remove();
+    }
+
+    // Calculate center point of all locations
+    let centerLon = 0;
+    let centerLat = 0;
+    let validLocations = locations.filter(loc => loc.lon && loc.lat);
+    
+    if (validLocations.length > 0) {
+        centerLon = validLocations.reduce((sum, loc) => sum + loc.lon, 0) / validLocations.length;
+        centerLat = validLocations.reduce((sum, loc) => sum + loc.lat, 0) / validLocations.length;
+    }
+
+    map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/dark-v10',
+        center: [centerLon, centerLat],
+        zoom: 1,
+        projection: 'mercator' // Changed from 'globe' to 'mercator' for better compatibility
+    });
+
+    // Add controls
+    map.addControl(new mapboxgl.NavigationControl());
+    map.addControl(new mapboxgl.FullscreenControl());
+
+    const coordinates = [];
+
+    // Add markers and collect coordinates
+    locations.forEach((location, index) => {
+        if (!location.lon || !location.lat) {
+            console.error('Invalid coordinates for location:', location);
+            return;
+        }
+
+        coordinates.push([location.lon, location.lat]);
+
+        const el = document.createElement('div');
+        el.className = 'custom-marker';
+        el.innerHTML = `
+            <div class="marker-content">
+                <i class="fas fa-map-marker-alt"></i>
+                <span class="marker-number">${index + 1}</span>
+            </div>
+        `;
+
+        const popup = new mapboxgl.Popup({
+            offset: 25,
+            closeButton: true,
+            closeOnClick: false
+        })
+        .setHTML(`
+            <div class="custom-popup">
+                <h3>${location.address}</h3>
+                <p>Stop ${index + 1} on the tour</p>
+            </div>
+        `);
+
+        new mapboxgl.Marker(el)
+            .setLngLat([location.lon, location.lat])
+            .setPopup(popup)
+            .addTo(map);
+    });
+
+    // Calculate appropriate zoom level based on coordinates spread
+    if (coordinates.length > 1) {
+        const lons = coordinates.map(coord => coord[0]);
+        const lats = coordinates.map(coord => coord[1]);
+        const minLon = Math.min(...lons);
+        const maxLon = Math.max(...lons);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        
+        const bounds = [
+            [minLon - 10, minLat - 10], // Add padding
+            [maxLon + 10, maxLat + 10]  // Add padding
+        ];
+        
+        map.fitBounds(bounds, {
+            padding: 50,
+            duration: 1000
+        });
+    }
+
+    map.on('style.load', () => {
+        if (coordinates.length > 1) {
+            map.addSource('route', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': coordinates
+                    }
+                }
+            });
+
+            // Add static route
+            map.addLayer({
+                'id': 'route',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#1DB954',
+                    'line-width': 2,
+                    'line-opacity': 0.5,
+                    'line-dasharray': [2, 2]
+                }
+            });
+
+            // Add animated route layer
+            map.addLayer({
+                'id': 'route-animation',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-cap': 'round',
+                    'line-join': 'round'
+                },
+                'paint': {
+                    'line-color': '#1DB954',
+                    'line-width': 3,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // Calculate and display total distance
+            const totalDistance = calculateDistance(coordinates);
+            addDistanceControl(map, totalDistance);
+
+            // Start the animation
+            let progress = 0;
+            function animateLine() {
+                if (!map.getLayer('route-animation')) return;
+                progress = (progress + 0.005) % 1;
+                map.setPaintProperty('route-animation', 'line-gradient', [
+                    'interpolate',
+                    ['linear'],
+                    ['line-progress'],
+                    0, '#1DB954',
+                    progress, '#ffffff',
+                    1, '#1DB954'
+                ]);
+                requestAnimationFrame(animateLine);
+            }
+            animateLine();
+        }
+    });
+}
+
 
 function toggleFavorite(artistId) {
     // Convert artistId to string for consistent comparison
@@ -110,78 +336,6 @@ function showNotification(message, type = 'success') {
     }, 2000);
 }
 
-function displayMap(locations) {
-    if (map) {
-        map.remove();
-    }
-
-    map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v11',
-        center: [0, 0],
-        zoom: 1
-    });
-
-    const bounds = new mapboxgl.LngLatBounds();
-
-    locations.forEach(location => {
-        if (!location.lon || !location.lat) {
-            console.error('Invalid coordinates for location:', location);
-            return;
-        }
-
-        const el = document.createElement('div');
-        el.className = 'custom-marker';
-        el.innerHTML = '<i class="fas fa-map-marker-alt"></i>';
-        el.style.color = '#FF0000';
-        el.style.fontSize = '24px';
-
-        el.addEventListener('click', () => {
-            const popup = document.createElement('div');
-            popup.className = 'custom-popup';
-            popup.innerHTML = `
-                <h3 style="color: black; margin: 0; padding: 5px 0;">${location.address}</h3>
-                <button class="popup-close">&times;</button>
-            `;
-            popup.style.position = 'absolute';
-            popup.style.backgroundColor = 'white';
-            popup.style.padding = '10px';
-            popup.style.borderRadius = '4px';
-            popup.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-            popup.style.zIndex = '1000';
-            popup.style.minWidth = '100px';
-            popup.style.textAlign = 'center';
-        
-            const existingPopup = document.querySelector('.custom-popup');
-            if (existingPopup) {
-                existingPopup.remove();
-            }
-        
-            map.getCanvasContainer().appendChild(popup);
-        
-            const point = map.project([location.lon, location.lat]);
-            popup.style.left = `${point.x - (popup.offsetWidth / 2)}px`;
-            popup.style.top = `${point.y - popup.offsetHeight - 10}px`;
-
-            const closeButton = popup.querySelector('.popup-close');
-            closeButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                popup.remove();
-            });
-        });
-
-        new mapboxgl.Marker({ element: el })
-            .setLngLat([location.lon, location.lat])
-            .addTo(map);
-
-        bounds.extend([location.lon, location.lat]);
-    });
-
-    if (!bounds.isEmpty()) {
-        map.fitBounds(bounds, { padding: 50 });
-    }
-}
-
 function displayArtistDetails(details) {
     const container = document.getElementById('artist-details');
     
@@ -227,7 +381,7 @@ function displayArtistDetails(details) {
     displayMap(details.locations);
 }
 
-// Load artist details when the page loads
+// Event Listeners
 window.addEventListener('load', () => {
     const artistId = getArtistId();
     if (artistId) {
