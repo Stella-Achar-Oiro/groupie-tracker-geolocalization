@@ -86,3 +86,16 @@ type FilterParams struct {
 	Members           []int    `json:"members"`
 	Locations         []string `json:"locations"`
 }
+
+type LocationPath struct {
+    Locations []GeoLocation `json:"locations"`
+    Path      []PathSegment `json:"path"`
+}
+
+type PathSegment struct {
+    StartLat float64 `json:"startLat"`
+    StartLon float64 `json:"startLon"`
+    EndLat   float64 `json:"endLat"`
+    EndLon   float64 `json:"endLon"`
+}
+
