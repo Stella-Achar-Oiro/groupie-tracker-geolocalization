@@ -5,6 +5,12 @@ var (
 	MapboxGeocodingAPI string
 )
 
+const (
+	 // Artist ID limits
+	 MinArtistID = 1
+	 MaxArtistID = 52
+)
+
 // InitConstants initializes the package-level constants
 func InitConstants(accessToken, geocodingAPI string) {
 	MapboxAccessToken = accessToken

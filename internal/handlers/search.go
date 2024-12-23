@@ -112,7 +112,19 @@ func matchesFilters(artist models.Artist, locations []string, filters models.Fil
     // Check number of members
     if len(filters.Members) > 0 {
         memberCount := len(artist.Members)
-        if !contains(filters.Members, memberCount) {
+        matched := false
+        for _, count := range filters.Members {
+            if count >= 10 {
+                if memberCount >= 10 {
+                    matched = true
+                    break
+                }
+            } else if memberCount == count {
+                matched = true
+                break
+            }
+        }
+        if !matched {
             return false
         }
     }
@@ -123,7 +135,7 @@ func matchesFilters(artist models.Artist, locations []string, filters models.Fil
         for _, loc := range locations {
             loc = strings.TrimSpace(loc)
             for _, filterLoc := range filters.Locations {
-                if strings.Contains(strings.ToLower(loc), strings.ToLower(filterLoc)) {
+                if strings.EqualFold(loc, filterLoc) {
                     matched = true
                     break
                 }
@@ -140,12 +152,12 @@ func matchesFilters(artist models.Artist, locations []string, filters models.Fil
     return true
 }
 
-// contains checks if a slice contains a value
-func contains(slice []int, val int) bool {
-    for _, item := range slice {
-        if item == val {
-            return true
-        }
-    }
-    return false
-}
+// // contains checks if a slice contains a value
+// func contains(slice []int, val int) bool {
+//     for _, item := range slice {
+//         if item == val {
+//             return true
+//         }
+//     }
+//     return false
+// }
