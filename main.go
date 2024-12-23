@@ -14,7 +14,7 @@ import (
 )
 
 var (
-    indexTpl        *template.Template
+    //indexTpl        *template.Template
     artistDetailsTpl *template.Template
     logger          *log.Logger
 )
@@ -71,6 +71,15 @@ func main() {
         tmpl, err := template.ParseFiles("templates/about.html")
         if err != nil {
             handlers.ErrorHandler(w, r, http.StatusInternalServerError, "Failed to load about page")
+            return
+        }
+        tmpl.Execute(w, nil)
+    })
+
+    http.HandleFunc("/work-with-us", func(w http.ResponseWriter, r *http.Request) {
+        tmpl, err := template.ParseFiles("templates/work-with-us.html")
+        if err != nil {
+            handlers.ErrorHandler(w, r, http.StatusInternalServerError, "Failed to load work with us page")
             return
         }
         tmpl.Execute(w, nil)
